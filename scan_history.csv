@@ -1,0 +1,19 @@
+timestamp,stage,filename,overall_similarity,skill_coverage_pct,combined_score
+2026-07-13T23:55:15,pre,Nasiru_Umar_CV_ICRC_Data_Analytics.docx,12.8,0.0,7.7
+2026-07-13T23:57:16,pre,Nasiru_Umar_CV_ICRC_Data_Analytics.docx,24.8,50.0,34.9
+2026-07-14T00:09:12,pre,Nasiru_Yusuf_Umar_PhD cv.docx,12.5,33.3,20.8
+2026-07-14T00:17:58,pre,Nasiru_Yusuf_Umar_PhD cv.docx,11.9,83.3,40.5
+2026-07-14T01:37:46,pre,Nasiru_Yusuf_Umar_PhD cv.docx,18.1,83.3,44.2
+2026-07-14T01:58:17,pre,Nasiru_Umar_CV_ICRC_Data_Analytics.docx,30.6,50.0,38.4
+2026-07-14T02:00:39,pre,Nasiru_Umar_CV_ICRC_Data_Analytics.docx,30.8,100.0,58.5
+2026-07-14T02:01:47,post,Nasiru_Umar_CV_ICRC_Data_Analytics.docx,30.8,100.0,58.5
+2026-07-14T02:08:56,pre,Nasiru_Umar_CV_ICRC_Data_Analytics.docx,17.8,50.0,30.7
+2026-07-14T02:09:53,post,Nasiru_Umar_CV_ICRC_Data_Analytics.docx,18.1,100.0,50.9
+2026-07-14T02:47:33,pre,Nasiru_Umar_CV_ICRC_Data_Analytics.docx,18.1,100.0,50.9
+2026-07-14T02:51:32,pre,Nasiru_Umar_CV_ICRC_Data_Analytics.docx,18.1,100.0,50.9
+2026-07-14T03:00:13,pre,Nasiru_Umar_CV_ICRC_Data_Analytics.docx,7.4,33.3,17.8
+2026-07-14T03:02:51,pre,Nasiru_Umar_CV_ICRC_Data_Analytics.docx,10.0,50.0,26.0
+2026-07-14T03:03:35,pre,Nasiru_Umar_CV_ICRC_Data_Analytics.docx,10.0,50.0,26.0
+2026-07-14T03:03:38,pre,Nasiru_Umar_CV_ICRC_Data_Analytics.docx,10.0,50.0,26.0
+2026-07-14T03:03:48,pre,Nasiru_Umar_CV_ICRC_Data_Analytics.docx,10.1,66.7,32.7
+2026-07-14T03:05:26,pre,Nasiru_Umar_CV_ICRC_Data_Analytics.docx,10.9,100.0,46.5
