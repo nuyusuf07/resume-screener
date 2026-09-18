@@ -11,16 +11,45 @@ from scorer import ScoreResult, count_impact_bullets, has_contact_info
 def generate_feedback(resume_text: str, result: ScoreResult) -> list:
     tips = []
 
-    if result.missing_skills:
+    if result.jd_skill_count == 0:
+        tips.append(
+            "The current keyword bank did not extract any scorable requirements from this job description. "
+            "Do not interpret the overall score as a full ATS assessment; review the JD manually or extend the bank."
+        )
+    elif result.missing_skills:
         shown = ", ".join(result.missing_skills[:8])
         extra = f" (+{len(result.missing_skills) - 8} more)" if len(result.missing_skills) > 8 else ""
         tips.append(
-            f"Missing keywords the job description mentions but your resume doesn't: {shown}{extra}. "
-            "If you genuinely have these skills, add them explicitly — ATS tools match on exact wording, "
-            "not on your job title alone."
+            f"Requirements detected in the job description but not in the resume: {shown}{extra}. "
+            "Add them only when your verified experience supports the claim; otherwise record them as genuine gaps."
         )
     else:
-        tips.append("Good news — your resume already contains every skill keyword found in the job description.")
+        tips.append(
+            "No requirement keywords are missing from the current bank. This is not proof that every qualification "
+            "is met; confirm eligibility, depth of experience and application instructions manually."
+        )
+
+    if result.transferable_matches:
+        shown = ", ".join(result.transferable_matches[:8])
+        extra = f" (+{len(result.transferable_matches) - 8} more)" if len(result.transferable_matches) > 8 else ""
+        tips.append(
+            f"Transferable evidence was found for: {shown}{extra}. These receive partial credit but remain direct-experience gaps."
+        )
+
+    if result.skills_only_matches:
+        shown = ", ".join(result.skills_only_matches[:8])
+        extra = f" (+{len(result.skills_only_matches) - 8} more)" if len(result.skills_only_matches) > 8 else ""
+        tips.append(
+            f"These matches were found outside the professional-experience section: {shown}{extra}. "
+            "Where truthful, demonstrate them in a role bullet rather than relying on a profile or skills list."
+        )
+
+    if result.alias_matches:
+        shown = ", ".join(result.alias_matches[:8])
+        extra = f" (+{len(result.alias_matches) - 8} more)" if len(result.alias_matches) > 8 else ""
+        tips.append(
+            f"Equivalent wording was accepted for: {shown}{extra}. Review the JD's exact terminology before submission."
+        )
 
     if result.skill_coverage_pct < 50:
         tips.append(
@@ -30,11 +59,15 @@ def generate_feedback(resume_text: str, result: ScoreResult) -> list:
         )
 
     impact_count = count_impact_bullets(resume_text)
-    if impact_count < 2:
+    if impact_count < 3:
         tips.append(
-            "Only a few of your bullet points show measurable impact (a number + an action verb, e.g. "
-            "'reduced processing time by 30%'). Recruiters and screening software both weigh quantified "
-            "achievements heavily — try rewriting at least 3–4 bullets this way."
+            f"Only {impact_count} experience bullet(s) combine an action with a number. Add verified scope or results "
+            "where they materially strengthen the evidence; do not invent metrics merely to raise the score."
+        )
+
+    if result.removed_jd_noise:
+        tips.append(
+            f"Removed {len(result.removed_jd_noise)} job-board control line(s) before scoring so navigation text did not distort the result."
         )
 
     contact = has_contact_info(resume_text)
@@ -68,4 +101,6 @@ def compare_scores(pre: ScoreResult, post: ScoreResult) -> dict:
         "delta": round(post.combined_score - pre.combined_score, 1),
         "skills_gained": sorted(set(post.matched_skills) - set(pre.matched_skills)),
         "still_missing": sorted(post.missing_skills),
+        "evidence_before": pre.evidence_coverage_pct,
+        "evidence_after": post.evidence_coverage_pct,
     }

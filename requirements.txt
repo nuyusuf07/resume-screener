@@ -2,6 +2,4 @@ streamlit==1.59.0
 scikit-learn
 pdfplumber
 python-docx
-PyPDF2
 pandas
-nltk

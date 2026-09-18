@@ -1,99 +1,105 @@
-# Pre-Post Resume Screening and Feedback System
+# Transparent Pre/Post Resume Screener
 
-A working implementation of the system described in the project proposal. It scores a resume
-against a job description, gives specific feedback on what's missing, and then lets you
-re-score a revised version to see exactly how much your changes improved your match.
+An offline Streamlit application for comparing a resume with a job description, revising the resume, and measuring what changed. The application is a decision-support tool: it does **not** reproduce a specific employer's ATS and its score is not a hiring prediction.
 
-No external AI model downloads or API keys are required — it runs fully offline using
-TF-IDF/cosine similarity (scikit-learn) for semantic matching and a curated keyword bank
-for skill-coverage checks. This matters for a project defence on a lab machine that might
-not have reliable internet on the day.
+## What the score means
 
-## 1. Project structure
+The overall score is built from three inspectable components:
 
-```
-resume_screener/
-├── app.py                  # Streamlit web interface (run this)
-├── parser.py                # Extracts text from PDF / DOCX / TXT resumes
-├── scorer.py                # TF-IDF similarity + skill-keyword matching engine
-├── feedback.py               # Turns scores into plain-language, actionable feedback
-├── skills_data.py             # Curated skill/keyword bank (edit this to add more skills)
+| Component | Weight | What it measures |
+|---|---:|---|
+| Text similarity | 15% | Word and character TF-IDF overlap between the resume and cleaned job description |
+| Requirement coverage | 45% | Weighted direct matches plus limited partial credit for explicitly configured transferable evidence |
+| Experience evidence | 40% | Whether matched requirements are demonstrated in professional experience rather than only listed elsewhere |
+
+The scorer distinguishes:
+
+- **Exact matches**: the resume uses the canonical requirement wording.
+- **Accepted equivalents**: the resume uses a narrow, manually reviewed alias such as `routine immunisation` for `routine immunization`.
+- **Transferable evidence**: related evidence earns partial credit, but the target requirement remains in the gap list.
+- **Skills-only matches**: the term appears outside professional experience and therefore receives reduced evidence credit.
+
+The keyword bank, aliases, weights and transferable-evidence rules are visible in `skills_data.py`. If the bank extracts no requirements from a job description, coverage is zero and the interface warns the user instead of claiming full coverage.
+
+## Key safeguards
+
+- Removes only conservative, whole-line job-board controls such as `Save`, `Email` and `Apply now`.
+- Keeps platform- or context-specific gaps visible; related experience does not become a false direct match.
+- Preserves DOCX paragraph/table reading order.
+- Joins wrapped PDF/DOCX bullets before checking quantified achievements.
+- Warns users to add keywords and metrics only when supported by verified experience.
+- Invalidates pre/post comparisons when the job description changes.
+- Migrates older local scan-history rows when new score columns are introduced.
+
+## Project structure
+
+```text
+resume-screener/
+├── app.py              # Streamlit interface and local scan history
+├── parser.py           # PDF, DOCX and TXT extraction; JD cleanup
+├── scorer.py           # Transparent matching and scoring engine
+├── feedback.py         # Actionable, evidence-conscious feedback
+├── skills_data.py      # Skill bank, aliases, weights and transfer rules
+├── tests/
+│   └── test_scorer.py  # PATH-style benchmark and regression tests
 ├── requirements.txt
-├── sample_data/
-│   ├── sample_job_description.txt
-│   ├── sample_resume_v1_before.txt
-│   ├── sample_resume_v2_after.txt
-│   └── demo_run_output.txt    # Real output from running the pipeline on the samples
 └── README.md
 ```
 
-## 2. How to run it
+## Run the application
+
+Python 3.10 or newer is recommended.
 
 ```bash
-cd resume_screener
-pip install -r requirements.txt
+git clone https://github.com/nuyusuf07/resume-screener.git
+cd resume-screener
+python -m venv .venv
+```
+
+Activate the environment:
+
+```bash
+# Linux/macOS
+source .venv/bin/activate
+
+# Windows PowerShell
+.venv\Scripts\Activate.ps1
+```
+
+Then install and run:
+
+```bash
+python -m pip install -r requirements.txt
 streamlit run app.py
 ```
 
-This opens the app in your browser (usually `http://localhost:8501`). If it doesn't open
-automatically, copy the "Local URL" printed in the terminal into your browser.
+Open the local URL printed by Streamlit, normally `http://localhost:8501`.
 
-## 3. How to use it
+## Use the pre/post workflow
 
-1. **Sidebar** — paste or upload the job description you're targeting.
-2. **Tab ① First Screen (Pre)** — upload your current resume. You'll get:
-   - An overall match score out of 100
-   - A semantic similarity score (how closely your resume's wording matches the JD)
-   - A skill-keyword coverage score
-   - A list of matched vs. missing skills
-   - Plain-language feedback (missing keywords, weak/short resume, no measurable
-     achievements, missing contact info, etc.)
-3. Revise your resume outside the app based on that feedback.
-4. **Tab ② Re-Screen After Editing (Post)** — upload the revised resume against the same
-   job description. You'll see a before/after comparison: score delta, skills gained,
-   and what's still missing.
-5. **Tab 📊 Scan History** — every scan (pre and post) is logged locally to
-   `scan_history.csv` with a timestamp, so you can track multiple attempts over time.
+1. Paste or upload the exact job description.
+2. Upload the current resume in **First Screen (Pre)**.
+3. Review the component scores, direct matches, evidence placement, transferable evidence and genuine gaps.
+4. Revise the resume outside the app without adding unsupported claims.
+5. Upload the revision in **Re-Screen After Editing (Post)**.
+6. Compare the overall score, evidence score, newly matched terms and remaining gaps.
 
-## 4. Sample test run (already verified working)
+Scan results are stored locally in `scan_history.csv`. Resumes and job descriptions are processed locally and are not sent to an external model or API.
 
-`sample_data/` contains a sample job description and two versions of a resume — a weak
-first draft and a revised version — so you can test the system immediately without
-needing your own files. Running the scoring pipeline directly on these (not through the
-UI — this is the raw engine output, captured in `sample_data/demo_run_output.txt`) gives:
+## Run the tests
 
-| Metric | Before | After | Change |
-|---|---|---|---|
-| Overall Match Score | 8.5 / 100 | 42.9 / 100 | **+34.4** |
-| Semantic Similarity | 9.4 / 100 | 28.6 / 100 | +19.2 |
-| Skill Coverage | 7.1% | 64.3% | +57.2% |
-| Matched skills | `python` only | `communication, machine learning, pandas, power bi, python, rest api, sql, statistics, teamwork` | +8 skills |
+```bash
+python -m unittest discover -s tests -v
+```
 
-This is the exact "before → feedback → revise → after" loop the proposal describes,
-running on real (if small) sample data rather than a hypothetical example.
+The regression suite checks job-board cleanup, a public-health MEL benchmark, genuine-gap preservation, evidence placement, alias reporting, unknown-domain handling and wrapped quantified bullets.
 
-To reproduce it yourself: upload `sample_resume_v1_before.txt` in Tab ①, then
-`sample_resume_v2_after.txt` in Tab ②, using `sample_job_description.txt` as the job
-description in the sidebar.
+## Important limitations
 
-## 5. Notes for the project report / defence
+- TF-IDF measures lexical similarity, not meaning in the way an embedding or language model does.
+- The curated bank cannot represent every profession or every employer's screening rules.
+- Requirement presence does not prove proficiency, duration, recency or eligibility.
+- PDF extraction depends on embedded text; image-only/scanned PDFs need OCR, which is not included.
+- Scores are useful for comparing revisions under the same methodology, not for estimating the probability of an interview.
 
-- **Why TF-IDF instead of a transformer/embedding model?** Sentence-embedding models
-  (e.g. Sentence-BERT) generally give richer semantic matching, but they require
-  downloading multi-hundred-MB model weights from the internet the first time they run.
-  TF-IDF + cosine similarity has no such dependency, is well-documented in the reviewed
-  literature (Saatçı et al., 2024; Khatri et al., 2025) as a legitimate baseline approach,
-  and is something you can fully explain line-by-line in a viva. If you want to extend
-  the project, swapping in `sentence-transformers` is a natural "future work" section —
-  the `scorer.py` module is written so that swap only touches `_tfidf_similarity()`.
-- **Why a keyword bank instead of NER (Named Entity Recognition)?** Same reasoning —
-  spaCy's pretrained NER models also require a model download. The keyword bank in
-  `skills_data.py` is easy to extend (just add strings to the relevant list) and easy to
-  defend: you can point to the exact list of terms being matched.
-- **Extending the skill bank**: if you're tailoring this toward specific roles (e.g. GIS
-  or health-data roles), add relevant terms to `skills_data.py` — there's already a
-  `gis_geospatial` category started as an example.
-- **Known limitation to mention in your report**: keyword matching won't catch a skill
-  described with completely different wording than the job description (e.g. "R" vs
-  "statistical programming"). This is exactly the gap that swapping in a semantic
-  embedding model would close — a good place to discuss trade-offs in your report.
+To support another domain, extend `SKILL_BANK` and add only defensible aliases or transfer rules. Add regression tests for every material rule change so a broader match does not accidentally erase a genuine requirement gap.

@@ -11,6 +11,8 @@ import re
 
 import pdfplumber
 from docx import Document as DocxDocument
+from docx.table import Table
+from docx.text.paragraph import Paragraph
 
 
 def _read_pdf(file_obj) -> str:
@@ -36,15 +38,28 @@ def _extract_table_text(table) -> list:
     return parts
 
 
+def _iter_block_items(document):
+    """Yield paragraphs and tables in their actual document order."""
+    for child in document.element.body.iterchildren():
+        if child.tag.endswith("}p"):
+            yield Paragraph(child, document)
+        elif child.tag.endswith("}tbl"):
+            yield Table(child, document)
+
+
 def _read_docx(file_obj) -> str:
     document = DocxDocument(file_obj)
+    parts = []
 
-    parts = [p.text for p in document.paragraphs]
-
-    # python-docx's `.paragraphs` skips text inside tables entirely, and CVs
-    # frequently put skills in a table (as in this project's own test case).
-    for table in document.tables:
-        parts.extend(_extract_table_text(table))
+    # `document.paragraphs` followed by `document.tables` changes the reading
+    # order.  ATS checks need the same sequence a recruiter sees, so walk the
+    # body XML and emit paragraphs/tables where they occur.
+    for block in _iter_block_items(document):
+        if isinstance(block, Paragraph):
+            if block.text.strip():
+                parts.append(block.text)
+        else:
+            parts.extend(_extract_table_text(block))
 
     return "\n".join(parts)
 
@@ -87,3 +102,39 @@ def clean_text(text: str) -> str:
     text = re.sub(r"[ \t]+", " ", text)
     text = re.sub(r"\n{3,}", "\n\n", text)
     return text.strip()
+
+
+_JOB_BOARD_NOISE = [
+    r"view jobs(?: in .*)?",
+    r"save",
+    r"email",
+    r"type your email(?: here)?\.*",
+    r"sign in",
+    r"log in",
+    r"apply now",
+    r"share(?: this job)?",
+    r"job alert(?:s)?",
+]
+
+
+def clean_job_description(text: str) -> tuple[str, list[str]]:
+    """
+    Remove common job-board controls without deleting substantive JD content.
+
+    Returns `(cleaned_text, removed_lines)` so the UI can make the cleanup
+    visible.  Only whole-line boilerplate is removed; a real requirement that
+    happens to contain words such as "email" remains untouched.
+    """
+    cleaned = clean_text(text)
+    kept = []
+    removed = []
+    patterns = [re.compile(rf"^\s*{p}\s*$", re.IGNORECASE) for p in _JOB_BOARD_NOISE]
+
+    for raw_line in cleaned.splitlines():
+        line = raw_line.strip()
+        if line and any(pattern.match(line) for pattern in patterns):
+            removed.append(line)
+        else:
+            kept.append(raw_line)
+
+    return clean_text("\n".join(kept)), removed
