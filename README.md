@@ -29,7 +29,7 @@ The keyword bank, aliases, weights and transferable-evidence rules are visible i
 - Joins wrapped PDF/DOCX bullets before checking quantified achievements.
 - Warns users to add keywords and metrics only when supported by verified experience.
 - Invalidates pre/post comparisons when the job description changes.
-- Migrates older local scan-history rows when new score columns are introduced.
+- Keeps scan history in the current browser session instead of a shared server-side CSV file.
 
 ## Project structure
 
@@ -84,7 +84,7 @@ Open the local URL printed by Streamlit, normally `http://localhost:8501`.
 5. Upload the revision in **Re-Screen After Editing (Post)**.
 6. Compare the overall score, evidence score, newly matched terms and remaining gaps.
 
-Scan results are stored locally in `scan_history.csv`. Resumes and job descriptions are processed locally and are not sent to an external model or API.
+Scan results are kept only in the active Streamlit browser session and clear when the session ends. Resumes and job descriptions are processed without being sent to an external model or API.
 
 ## Run the tests
 

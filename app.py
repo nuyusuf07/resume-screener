@@ -6,7 +6,6 @@ Run with:  streamlit run app.py
 """
 
 import datetime
-import os
 
 import pandas as pd
 import streamlit as st
@@ -17,7 +16,6 @@ from feedback import generate_feedback, compare_scores
 
 st.set_page_config(page_title="Resume Screening System", page_icon="📄", layout="wide")
 
-HISTORY_FILE = "scan_history.csv"
 HISTORY_COLUMNS = [
     "timestamp",
     "stage",
@@ -41,15 +39,9 @@ def log_scan(stage, filename, result):
         "jd_requirements_detected": result.jd_skill_count,
         "combined_score": result.combined_score,
     }
-    new_row = pd.DataFrame([row])
-    if os.path.exists(HISTORY_FILE):
-        # Older app versions used fewer columns. Read and rewrite the small
-        # local history table so new rows never shift under the old header.
-        history = pd.read_csv(HISTORY_FILE)
-        history = pd.concat([history, new_row], ignore_index=True)
-    else:
-        history = new_row
-    history.reindex(columns=HISTORY_COLUMNS).to_csv(HISTORY_FILE, index=False)
+    # Session state is isolated per active browser session. It avoids writing
+    # candidate filenames or scores to a shared server-side CSV file.
+    st.session_state.setdefault("scan_history", []).append(row)
 
 
 def score_gauge(label, value):
@@ -229,9 +221,14 @@ with tab_post:
 
 # ---------- HISTORY TAB ----------
 with tab_history:
-    st.subheader("All scans this session (stored locally in scan_history.csv)")
-    if os.path.exists(HISTORY_FILE):
-        df = pd.read_csv(HISTORY_FILE)
+    st.subheader("Scans from this browser session")
+    st.caption(
+        "This history is private to the current Streamlit session and is not written to a server-side CSV file. "
+        "It clears when the session ends."
+    )
+    session_history = st.session_state.get("scan_history", [])
+    if session_history:
+        df = pd.DataFrame(session_history).reindex(columns=HISTORY_COLUMNS)
         st.dataframe(df, width="stretch")
     else:
-        st.write("No scans recorded yet.")
+        st.write("No scans recorded in this browser session yet.")
